@@ -78,6 +78,10 @@ review can take a few minutes, so run them with a 10-minute timeout. When
 findings come back, give your assessment of each one (agree or disagree, with a reason) and do not
 change the plan or the code until the human decides.
 
+`scripts/cross-review.sh` and `scripts/cross-review.ps1` send tracked changes only (name untracked
+files with `--include` / `-Include`), skip a secret-file deny list, and scan the request with
+gitleaks first. If gitleaks is missing or fails, nothing is sent.
+
 ## This project
 
 - `.`: go

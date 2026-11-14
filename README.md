@@ -12,4 +12,4 @@ bash scripts/check.sh
 
 Exit 0 when the total is within `--budget` or when no budget is set. Exit 1 when the total is greater than the budget. Exit 2 when a file cannot be read or parsed, or the budget is not a non-negative integer. The report does not print schema bodies.
 
-Symlinks and files over 1 MiB are refused.
+Input is read with a single open. Symlinks and anything that is not a regular file (FIFOs, devices, directories) are refused, and files over 1 MiB (1048576 bytes) are refused; the read itself is bounded at that size. Input with no `tools` or `mcpServers`, unknown top-level keys, duplicate keys, nesting deeper than 64, or a second JSON value after the first is an error (exit 2).

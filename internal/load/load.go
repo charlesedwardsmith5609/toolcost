@@ -4,8 +4,9 @@ package load
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"os"
+	"io"
 	"sort"
 )
 
@@ -18,27 +19,98 @@ type Item struct {
 	Schema []byte
 }
 
-// ReadFile loads path. Symlinks and oversized files are errors.
+// MaxDepth is the deepest container nesting Parse accepts.
+const MaxDepth = 64
+
+// ReadFile loads path. It opens the file once, refuses symlinks and anything that is not a
+// regular file (FIFOs, devices, directories), and reads at most MaxBytes.
 func ReadFile(path string) ([]Item, error) {
-	info, err := os.Lstat(path)
+	f, err := openNoFollow(path)
 	if err != nil {
 		return nil, err
 	}
-	if info.Mode()&os.ModeSymlink != 0 {
-		return nil, fmt.Errorf("%s is a symlink", path)
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		return nil, err
 	}
-	if info.Size() > MaxBytes {
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("%s is not a regular file", path)
+	}
+	data, err := io.ReadAll(io.LimitReader(f, MaxBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(data) > MaxBytes {
 		return nil, fmt.Errorf("%s is larger than %d bytes", path, MaxBytes)
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
 	}
 	return Parse(path, data)
 }
 
-// Parse accepts an object with tools and mcpServers, or a bare array of tools.
+// checkJSON walks the tokens once. It rejects duplicate keys, nesting deeper than MaxDepth,
+// and any value after the first document.
+func checkJSON(data []byte) error {
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.UseNumber()
+	if err := walk(dec, 1); err != nil {
+		return err
+	}
+	if _, err := dec.Token(); err != io.EOF {
+		if err == nil {
+			return errors.New("unexpected data after the first JSON value")
+		}
+		return err
+	}
+	return nil
+}
+
+func walk(dec *json.Decoder, depth int) error {
+	tok, err := dec.Token()
+	if err != nil {
+		return err
+	}
+	delim, ok := tok.(json.Delim)
+	if !ok {
+		return nil
+	}
+	if depth > MaxDepth {
+		return fmt.Errorf("nesting deeper than %d", MaxDepth)
+	}
+	switch delim {
+	case '{':
+		seen := map[string]bool{}
+		for dec.More() {
+			kt, err := dec.Token()
+			if err != nil {
+				return err
+			}
+			key, _ := kt.(string)
+			if seen[key] {
+				return fmt.Errorf("duplicate key %q", key)
+			}
+			seen[key] = true
+			if err := walk(dec, depth+1); err != nil {
+				return err
+			}
+		}
+	case '[':
+		for dec.More() {
+			if err := walk(dec, depth+1); err != nil {
+				return err
+			}
+		}
+	}
+	_, err = dec.Token() // closing delimiter
+	return err
+}
+
+// Parse accepts an object with tools and/or mcpServers, or a bare array of tools.
+// Any other shape, unknown top-level keys, duplicate keys, trailing values and deep nesting
+// are errors.
 func Parse(path string, data []byte) ([]Item, error) {
+	if err := checkJSON(data); err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.UseNumber()
 	var root any
@@ -49,7 +121,17 @@ func Parse(path string, data []byte) ([]Item, error) {
 	case []any:
 		return itemsFromTools("tool", value)
 	case map[string]any:
-		var out []Item
+		for key := range value {
+			if key != "tools" && key != "mcpServers" {
+				return nil, fmt.Errorf("%s: unknown top-level key %q", path, key)
+			}
+		}
+		if _, ok := value["tools"]; !ok {
+			if _, ok := value["mcpServers"]; !ok {
+				return nil, fmt.Errorf("%s: expected tools or mcpServers", path)
+			}
+		}
+		out := []Item{}
 		if raw, ok := value["tools"]; ok {
 			tools, ok := raw.([]any)
 			if !ok {

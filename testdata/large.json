@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["server-filesystem"],
+      "description": "A long filesystem tool description that exists only so the byte estimator crosses a tiny budget in tests. It is repeated to make the schema large enough that a one-token budget fails. A long filesystem tool description that exists only so the byte estimator crosses a tiny budget in tests."
+    }
+  },
+  "tools": [
+    {"name": "search", "description": "short"}
+  ]
+}

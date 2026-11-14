@@ -1,0 +1,5 @@
+{
+  "tools": [
+    {"name": "search", "description": "Find a file by name.", "input_schema": {"type": "object", "properties": {"q": {"type": "string"}}}}
+  ]
+}

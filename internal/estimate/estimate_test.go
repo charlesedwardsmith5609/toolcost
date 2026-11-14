@@ -1,6 +1,7 @@
 package estimate
 
 import (
+	"fmt"
 	"math"
 	"strings"
 	"testing"
@@ -112,6 +113,38 @@ func TestNoErrorBoundField(t *testing.T) {
 	rep, _ := Count(nil, Default())
 	if strings.Contains(strings.ToLower(rep.Estimator), "0.5") {
 		t.Fatal(rep.Estimator)
+	}
+}
+
+func TestSuggestionRule(t *testing.T) {
+	tools := func(sizes ...int) []load.Item {
+		var out []load.Item
+		for i, tokens := range sizes {
+			out = append(out, load.Item{Name: fmt.Sprintf("t%d", i), Kind: "tool", Schema: []byte(strings.Repeat("x", tokens*4))})
+		}
+		return out
+	}
+	cases := []struct {
+		name  string
+		items []load.Item
+		want  int
+	}{
+		{"one tool at 100 percent and 50 tokens", tools(50), 0},
+		{"total 199 never", tools(199), 0},
+		{"total 199 over many rows", tools(100, 99), 0},
+		{"one row at 200 tokens", tools(200), 1},
+		{"3+ rows, one at 30 percent, total 500", tools(150, 120, 120, 110), 1},
+		{"two rows, share rule does not apply", tools(150, 50), 0},
+		{"five rows at 20 percent", tools(100, 100, 100, 100, 100), 0},
+	}
+	for _, c := range cases {
+		rep, err := Count(c.items, Default())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(rep.Suggestions) != c.want {
+			t.Errorf("%s: %d suggestions, want %d (%+v)", c.name, len(rep.Suggestions), c.want, rep)
+		}
 	}
 }
 

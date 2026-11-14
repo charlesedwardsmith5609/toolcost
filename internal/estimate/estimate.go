@@ -71,11 +71,16 @@ type Row struct {
 type Report struct {
 	Total           int      `json:"total"`
 	MCPConfigTokens int      `json:"mcp_config_tokens"`
-	Budget          int      `json:"budget,omitempty"`
+	Budget          *int     `json:"budget,omitempty"`
 	Estimator       string   `json:"estimator"`
 	Rows            []Row    `json:"rows"`
 	Suggestions     []string `json:"suggestions"`
 }
+
+const (
+	minSuggestTotal  = 200
+	minSuggestTokens = 200
+)
 
 func addChecked(a, b int) (int, error) {
 	if b < 0 || a > math.MaxInt-b {
@@ -120,9 +125,20 @@ func Count(items []load.Item, est Estimator) (Report, error) {
 		}
 		return report.Rows[i].Tokens > report.Rows[j].Tokens
 	})
+	// Suggestions are for small-setup noise control: none below minSuggestTotal, and the
+	// share rule needs at least three tool rows.
+	toolRows := 0
+	for _, row := range report.Rows {
+		if row.Note == "" {
+			toolRows++
+		}
+	}
 	for i := range report.Rows {
 		row := &report.Rows[i]
-		if row.Note == "" && report.Total > 0 && (row.Tokens >= 200 || row.Tokens*100/report.Total >= 25) {
+		if row.Note != "" || report.Total < minSuggestTotal {
+			continue
+		}
+		if row.Tokens >= minSuggestTokens || (toolRows >= 3 && row.Tokens*100/report.Total >= 25) {
 			row.Suggest = fmt.Sprintf("Disable %q on turns that do not need it.", row.Name)
 			report.Suggestions = append(report.Suggestions, row.Suggest)
 		}

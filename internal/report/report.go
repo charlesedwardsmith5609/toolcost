@@ -17,6 +17,16 @@ func Text(w io.Writer, rep estimate.Report) error {
 	if _, err := fmt.Fprintf(w, "estimator %s\n", rep.Estimator); err != nil {
 		return err
 	}
+	if rep.Budget != nil {
+		if _, err := fmt.Fprintf(w, "budget %d\n", *rep.Budget); err != nil {
+			return err
+		}
+		if rep.Total > *rep.Budget {
+			if _, err := fmt.Fprintf(w, "over budget by %d\n", rep.Total-*rep.Budget); err != nil {
+				return err
+			}
+		}
+	}
 	if rep.MCPConfigTokens > 0 {
 		if _, err := fmt.Fprintf(w, "mcp config %d tokens (config only, not in total or budget)\n", rep.MCPConfigTokens); err != nil {
 			return err
@@ -47,6 +57,7 @@ func Text(w io.Writer, rep estimate.Report) error {
 // JSON writes the report. It does not include schema bodies.
 func JSON(w io.Writer, rep estimate.Report) error {
 	enc := json.NewEncoder(w)
+	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
 	return enc.Encode(rep)
 }

@@ -127,3 +127,42 @@ func TestExitCodes(t *testing.T) {
 		}
 	}
 }
+
+func TestBudgetZeroOutput(t *testing.T) {
+	bin := buildBin(t)
+	small := filepath.Join("..", "..", "testdata", "small.json")
+	out, code := run(t, bin, "--budget", "0", small)
+	if code != 1 || !strings.Contains(out, "budget 0") || !strings.Contains(out, "over budget by") {
+		t.Fatalf("exit %d\n%s", code, out)
+	}
+	out, code = run(t, bin, "--format", "json", "--budget", "0", small)
+	if code != 1 || !strings.Contains(out, `"budget": 0`) {
+		t.Fatalf("exit %d\n%s", code, out)
+	}
+	empty := writeFile(t, "empty.json", `{"tools":[]}`)
+	out, code = run(t, bin, "--budget", "0", empty)
+	if code != 0 || !strings.Contains(out, "budget 0") || strings.Contains(out, "over budget") {
+		t.Fatalf("exit %d\n%s", code, out)
+	}
+}
+
+func TestFixtureExitCodes(t *testing.T) {
+	bin := buildBin(t)
+	root := filepath.Join("..", "..", "testdata")
+	cases := []struct {
+		file   string
+		budget string
+		want   int
+	}{
+		{"small.json", "5000", 0},
+		{"small.json", "1", 1},
+		{"large.json", "1", 1},
+		{"large.json", "100000", 0},
+		{"missing.json", "5000", 2},
+	}
+	for _, c := range cases {
+		if out, code := run(t, bin, "--budget", c.budget, filepath.Join(root, c.file)); code != c.want {
+			t.Errorf("%s budget %s: exit %d, want %d\n%s", c.file, c.budget, code, c.want, out)
+		}
+	}
+}

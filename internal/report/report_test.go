@@ -57,3 +57,47 @@ func TestTextLabelsMCPConfigOnly(t *testing.T) {
 		t.Fatal(out)
 	}
 }
+
+func TestJSONDoesNotEscapeHTML(t *testing.T) {
+	var buf bytes.Buffer
+	rep := estimate.Report{Estimator: "bytes/4", Rows: []estimate.Row{{Name: "a<b>&c", Kind: "tool", Tokens: 1}}}
+	if err := JSON(&buf, rep); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "a<b>&c") || strings.Contains(out, `\u003c`) {
+		t.Fatal(out)
+	}
+}
+
+func TestBudgetShown(t *testing.T) {
+	zero, five := 0, 5
+	var buf bytes.Buffer
+	if err := JSON(&buf, estimate.Report{Estimator: "bytes/4", Budget: &zero}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), `"budget": 0`) {
+		t.Fatal(buf.String())
+	}
+	buf.Reset()
+	if err := JSON(&buf, estimate.Report{Estimator: "bytes/4"}); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(buf.String(), `"budget"`) {
+		t.Fatal(buf.String())
+	}
+	buf.Reset()
+	if err := Text(&buf, estimate.Report{Total: 8, Estimator: "bytes/4", Budget: &five}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "budget 5\n") || !strings.Contains(buf.String(), "over budget by 3") {
+		t.Fatal(buf.String())
+	}
+	buf.Reset()
+	if err := Text(&buf, estimate.Report{Total: 4, Estimator: "bytes/4", Budget: &five}); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(buf.String(), "over budget") {
+		t.Fatal(buf.String())
+	}
+}

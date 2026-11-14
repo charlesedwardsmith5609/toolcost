@@ -43,7 +43,7 @@ func main() {
 		os.Exit(2)
 	}
 	if limit >= 0 {
-		rep.Budget = limit
+		rep.Budget = &limit
 	}
 	if *format == "json" {
 		err = report.JSON(os.Stdout, rep)

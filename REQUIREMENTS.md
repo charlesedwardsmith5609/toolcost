@@ -8,7 +8,7 @@ JSON. An object may contain `tools` (an array of tool objects) and `mcpServers` 
 
 ## Estimator
 
-The default estimator is `len(canonical JSON) / 4`, rounded up. Canonical JSON sorts object keys and keeps numbers as written. This is not a vendor tokenizer. The documented error bound is about 0.5x to 2x a typical BPE count for this kind of schema text. Callers can pass another estimator that implements the same `Tokens([]byte) int` method. No estimator may use the network.
+The default estimator is `len(canonical JSON) / 4`, rounded up. Canonical JSON sorts object keys and keeps numbers as written. This is not a vendor tokenizer. The error against a vendor tokenizer is unmeasured. Callers can pass another estimator that implements the same `Tokens([]byte) int` method. No estimator may use the network.
 
 ## Output
 

@@ -89,3 +89,41 @@ func TestBadInputExitsTwo(t *testing.T) {
 		}
 	}
 }
+
+func TestMCPDoesNotCountTowardBudget(t *testing.T) {
+	bin := buildBin(t)
+	mcp := writeFile(t, "mcp.json", `{"mcpServers":{"fs":{"command":"npx","args":["a","b","c"]}}}`)
+	out, code := run(t, bin, "--budget", "0", mcp)
+	if code != 0 || !strings.Contains(out, "config only") {
+		t.Fatalf("mcp-only budget 0: exit %d\n%s", code, out)
+	}
+	both := writeFile(t, "both.json", `{"tools":[{"name":"search","description":"find a thing by name"}],"mcpServers":{"fs":{"command":"npx"}}}`)
+	if _, code = run(t, bin, "--budget", "0", both); code != 1 {
+		t.Fatalf("tools over budget: exit %d, want 1", code)
+	}
+	if out, code = run(t, bin, "--budget", "1000", both); code != 0 {
+		t.Fatalf("tools within budget: exit %d\n%s", code, out)
+	}
+}
+
+func TestExitCodes(t *testing.T) {
+	bin := buildBin(t)
+	small := filepath.Join("..", "..", "testdata", "small.json")
+	cases := []struct {
+		args []string
+		want int
+	}{
+		{[]string{small}, 0},
+		{[]string{"--budget", "5000", small}, 0},
+		{[]string{"--budget", "1", small}, 1},
+		{[]string{"--budget", "-1", small}, 2},
+		{[]string{"--budget", "x", small}, 2},
+		{[]string{"--format", "yaml", small}, 2},
+		{[]string{}, 2},
+	}
+	for _, c := range cases {
+		if out, code := run(t, bin, c.args...); code != c.want {
+			t.Errorf("%v: exit %d, want %d\n%s", c.args, code, c.want, out)
+		}
+	}
+}

@@ -4,7 +4,7 @@ The tool reads JSON the operator names. It does not send schemas to a tokenizer 
 
 ## What the number is
 
-The count is an estimate of context overhead per turn, not a bill and not a vendor's token counter. The error bound is about 0.5x to 2x a typical BPE count for schema text. Treat a number under the budget as a hint, and keep a margin.
+The count is an estimate of context overhead per turn, not a bill and not a vendor's token counter. The error against a vendor tokenizer is unmeasured. Treat a number under the budget as a hint, and keep a margin.
 
 ## Failure
 

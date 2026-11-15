@@ -62,7 +62,7 @@ visible so each decision can be reviewed before it lands.
 
 Every enabled tool and every MCP server costs context tokens on every turn, including turns that do not call them. Enable a tool or server for the task that needs it, and disable it when that task is done.
 
-Run the agent in a sandboxed devcontainer when the work can touch the host. The pairing kit note is `docs/sandboxed-devcontainer.md`. This paragraph does not add a devcontainer file.
+Run the agent in a sandboxed devcontainer when the work can touch the host. The pairing kit repository has a note on this, `docs/sandboxed-devcontainer.md`; that file lives in the kit, not in this project. This paragraph does not add a devcontainer file.
 
 ## Commands
 
@@ -77,6 +77,10 @@ Both reviews send work to a different AI provider: the plan review checks a plan
 review can take a few minutes, so run them with a 10-minute timeout. When
 findings come back, give your assessment of each one (agree or disagree, with a reason) and do not
 change the plan or the code until the human decides.
+
+`scripts/cross-review.sh` and `scripts/cross-review.ps1` send tracked changes only (name untracked
+files with `--include` / `-Include`), skip a secret-file deny list, and scan the request with
+gitleaks first. If gitleaks is missing or fails, nothing is sent.
 
 ## This project
 

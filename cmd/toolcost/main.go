@@ -37,11 +37,14 @@ func main() {
 		}
 		items = append(items, parsed...)
 	}
-	rep := estimate.Count(items, estimate.Default())
-	if limit >= 0 {
-		rep.Budget = limit
+	rep, err := estimate.Count(items, estimate.Default())
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
 	}
-	var err error
+	if limit >= 0 {
+		rep.Budget = &limit
+	}
 	if *format == "json" {
 		err = report.JSON(os.Stdout, rep)
 	} else if *format == "text" {
